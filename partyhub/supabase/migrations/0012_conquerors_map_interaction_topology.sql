@@ -1,0 +1,290 @@
+-- PartyHub «Завоеватели»: map interaction, territory topology, landmarks and balanced starts.
+-- Apply after 0011_original_conquerors_map.sql.
+-- Ownership of existing matches is preserved; coordinates and adjacency are corrected.
+begin;
+
+with positions(territory_key, position_x, position_y) as (values
+ ('t01',20.6,19.7),
+ ('t02',27.0,23.9),
+ ('t03',34.9,16.7),
+ ('t04',51.1,15.9),
+ ('t05',66.2,16.8),
+ ('t06',31.2,34.1),
+ ('t07',57.5,26.9),
+ ('t08',63.9,33.7),
+ ('t09',72.1,34.5),
+ ('t10',17.7,39.1),
+ ('t11',24.5,44.6),
+ ('t12',35.3,46.5),
+ ('t13',46.9,45.6),
+ ('t14',58.6,45.5),
+ ('t15',68.1,47.3),
+ ('t16',42.5,31.5),
+ ('t17',16.3,52.7),
+ ('t18',15.7,69.8),
+ ('t19',26.0,68.5),
+ ('t20',44.6,69.5),
+ ('t21',60.0,58.7),
+ ('t22',67.7,61.5),
+ ('t23',75.2,67.5),
+ ('t24',60.3,77.0),
+ ('t25',69.3,74.1),
+ ('t26',52.1,80.5),
+ ('t27',43.8,77.1),
+ ('t28',35.8,80.9),
+ ('t29',22.8,78.3),
+ ('t30',15.8,83.2)
+)
+update public.conquest_map_territories t
+set position_x=p.position_x, position_y=p.position_y
+from positions p
+where t.territory_key=p.territory_key;
+
+with map_metadata(territory_key,name,territory_type,terrain,base_defense,gold_reward,coastal,special_effect) as (values
+ ('t01','Западный Вольный порт','special','coast',0,0,true,'free_port'),
+ ('t02','Западные земли','ordinary','plain',0,0,false,null),
+ ('t03','Перевал Чёрного хребта','special','mountain',100,0,false,'pass'),
+ ('t04','Северные земли','ordinary','plain',0,0,false,null),
+ ('t05','Северо-восточные земли','ordinary','forest',100,0,false,null),
+ ('t06','Западный лес','ordinary','forest',100,0,false,null),
+ ('t07','Золотые копи','special','plain',0,10,false,'gold_mine'),
+ ('t08','Восточные пустоши','ordinary','plain',0,0,false,null),
+ ('t09','Восточный Вольный порт','special','coast',0,0,true,'free_port'),
+ ('t10','Западные пустоши','ordinary','plain',0,0,false,null),
+ ('t11','Западная чаща','ordinary','forest',100,0,false,null),
+ ('t12','Академия мудрецов','special','forest',100,0,false,'academy'),
+ ('t13','Центральные горы','ordinary','mountain',100,0,false,null),
+ ('t14','Горный хребет','neutral','mountain',100,20,false,'neutral_reward'),
+ ('t15','Древний лес','special','forest',250,0,false,'ancient_forest'),
+ ('t16','Крепость Железный Дозор','special','mountain',500,0,false,'fortress'),
+ ('t17','Юго-западные земли','ordinary','plain',0,0,false,null),
+ ('t18','Западная крепость','ordinary','forest',100,0,false,null),
+ ('t19','Южные земли','neutral','plain',0,40,false,'neutral_reward'),
+ ('t20','Цитадель Пепельной Короны','neutral','mountain',500,0,false,'citadel'),
+ ('t21','Золотая долина','ordinary','plain',0,0,false,null),
+ ('t22','Королевский мост','special','plain',250,0,false,'royal_bridge'),
+ ('t23','Восточный Вольный порт','special','coast',0,0,true,'free_port'),
+ ('t24','Лесные стражи','neutral','forest',100,100,false,'neutral_reward'),
+ ('t25','Юго-восточные земли','neutral','plain',0,60,true,'neutral_reward'),
+ ('t26','Южные земли','ordinary','plain',0,0,false,null),
+ ('t27','Золотые равнины','ordinary','plain',0,0,false,null),
+ ('t28','Южное побережье','ordinary','coast',0,0,true,null),
+ ('t29','Южный древний лес','special','forest',250,0,false,'ancient_forest'),
+ ('t30','Юго-западный край','ordinary','coast',0,0,true,null)
+)
+update public.conquest_map_territories t
+set name=m.name, territory_type=m.territory_type, terrain=m.terrain,
+    base_defense=m.base_defense, gold_reward=m.gold_reward, coastal=m.coastal,
+    special_effect=m.special_effect
+from map_metadata m
+where t.territory_key=m.territory_key;
+
+delete from public.conquest_map_edges;
+insert into public.conquest_map_edges(game_id,territory_a,territory_b)
+select g.id,e.territory_a,e.territory_b
+from public.conquest_games g
+cross join (values
+ ('t01','t02'),
+ ('t01','t10'),
+ ('t02','t03'),
+ ('t02','t06'),
+ ('t02','t10'),
+ ('t03','t04'),
+ ('t03','t06'),
+ ('t04','t05'),
+ ('t04','t07'),
+ ('t05','t07'),
+ ('t05','t08'),
+ ('t06','t07'),
+ ('t06','t10'),
+ ('t06','t11'),
+ ('t06','t12'),
+ ('t06','t16'),
+ ('t07','t08'),
+ ('t07','t13'),
+ ('t07','t16'),
+ ('t08','t09'),
+ ('t08','t13'),
+ ('t08','t14'),
+ ('t08','t15'),
+ ('t09','t15'),
+ ('t10','t11'),
+ ('t10','t17'),
+ ('t11','t12'),
+ ('t11','t17'),
+ ('t11','t19'),
+ ('t12','t13'),
+ ('t12','t16'),
+ ('t12','t19'),
+ ('t13','t14'),
+ ('t13','t16'),
+ ('t13','t19'),
+ ('t13','t20'),
+ ('t14','t15'),
+ ('t14','t21'),
+ ('t15','t22'),
+ ('t15','t23'),
+ ('t17','t18'),
+ ('t17','t19'),
+ ('t18','t19'),
+ ('t18','t29'),
+ ('t19','t20'),
+ ('t19','t29'),
+ ('t20','t21'),
+ ('t20','t24'),
+ ('t20','t27'),
+ ('t21','t22'),
+ ('t21','t24'),
+ ('t22','t23'),
+ ('t22','t24'),
+ ('t23','t25'),
+ ('t24','t25'),
+ ('t24','t26'),
+ ('t24','t27'),
+ ('t25','t26'),
+ ('t26','t27'),
+ ('t27','t28'),
+ ('t28','t29'),
+ ('t28','t30'),
+ ('t29','t30')
+) as e(territory_a,territory_b);
+
+create or replace function public.init_conquest_game(p_room_id uuid)
+returns jsonb language plpgsql security definer set search_path=public,auth as $$
+declare r public.rooms; v_game public.conquest_games; v_user uuid:=auth.uid();
+begin
+ select * into r from public.rooms where id=p_room_id for update;
+ if not found then raise exception 'Комната не найдена.'; end if;
+ if r.host_id<>v_user then raise exception 'Создать карту может только ведущий.'; end if;
+ if exists(select 1 from public.conquest_games where room_id=p_room_id) then
+   select * into v_game from public.conquest_games where room_id=p_room_id;
+   return jsonb_build_object('game_id',v_game.id,'room_id',p_room_id,'status',v_game.status);
+ end if;
+ update public.rooms set game_type='conquest' where id=p_room_id;
+ insert into public.conquest_games(room_id) values(p_room_id) returning * into v_game;
+ insert into public.conquest_map_territories(game_id,territory_key,name,position_x,position_y,territory_type,terrain,base_defense,gold_reward,coastal,special_effect) values
+ (v_game.id,'t01','Западный Вольный порт',20.6,19.7,'special','coast',0,0,true,'free_port'),
+ (v_game.id,'t02','Западные земли',27.0,23.9,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t03','Перевал Чёрного хребта',34.9,16.7,'special','mountain',100,0,false,'pass'),
+ (v_game.id,'t04','Северные земли',51.1,15.9,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t05','Северо-восточные земли',66.2,16.8,'ordinary','forest',100,0,false,null),
+ (v_game.id,'t06','Западный лес',31.2,34.1,'ordinary','forest',100,0,false,null),
+ (v_game.id,'t07','Золотые копи',57.5,26.9,'special','plain',0,10,false,'gold_mine'),
+ (v_game.id,'t08','Восточные пустоши',63.9,33.7,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t09','Восточный Вольный порт',72.1,34.5,'special','coast',0,0,true,'free_port'),
+ (v_game.id,'t10','Западные пустоши',17.7,39.1,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t11','Западная чаща',24.5,44.6,'ordinary','forest',100,0,false,null),
+ (v_game.id,'t12','Академия мудрецов',35.3,46.5,'special','forest',100,0,false,'academy'),
+ (v_game.id,'t13','Центральные горы',46.9,45.6,'ordinary','mountain',100,0,false,null),
+ (v_game.id,'t14','Горный хребет',58.6,45.5,'neutral','mountain',100,20,false,'neutral_reward'),
+ (v_game.id,'t15','Древний лес',68.1,47.3,'special','forest',250,0,false,'ancient_forest'),
+ (v_game.id,'t16','Крепость Железный Дозор',42.5,31.5,'special','mountain',500,0,false,'fortress'),
+ (v_game.id,'t17','Юго-западные земли',16.3,52.7,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t18','Западная крепость',15.7,69.8,'ordinary','forest',100,0,false,null),
+ (v_game.id,'t19','Южные земли',26.0,68.5,'neutral','plain',0,40,false,'neutral_reward'),
+ (v_game.id,'t20','Цитадель Пепельной Короны',44.6,69.5,'neutral','mountain',500,0,false,'citadel'),
+ (v_game.id,'t21','Золотая долина',60.0,58.7,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t22','Королевский мост',67.7,61.5,'special','plain',250,0,false,'royal_bridge'),
+ (v_game.id,'t23','Восточный Вольный порт',75.2,67.5,'special','coast',0,0,true,'free_port'),
+ (v_game.id,'t24','Лесные стражи',60.3,77.0,'neutral','forest',100,100,false,'neutral_reward'),
+ (v_game.id,'t25','Юго-восточные земли',69.3,74.1,'neutral','plain',0,60,true,'neutral_reward'),
+ (v_game.id,'t26','Южные земли',52.1,80.5,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t27','Золотые равнины',43.8,77.1,'ordinary','plain',0,0,false,null),
+ (v_game.id,'t28','Южное побережье',35.8,80.9,'ordinary','coast',0,0,true,null),
+ (v_game.id,'t29','Южный древний лес',22.8,78.3,'special','forest',250,0,false,'ancient_forest'),
+ (v_game.id,'t30','Юго-западный край',15.8,83.2,'ordinary','coast',0,0,true,null);
+ insert into public.conquest_map_edges(game_id,territory_a,territory_b) values
+ (v_game.id,'t01','t02'),
+ (v_game.id,'t01','t10'),
+ (v_game.id,'t02','t03'),
+ (v_game.id,'t02','t06'),
+ (v_game.id,'t02','t10'),
+ (v_game.id,'t03','t04'),
+ (v_game.id,'t03','t06'),
+ (v_game.id,'t04','t05'),
+ (v_game.id,'t04','t07'),
+ (v_game.id,'t05','t07'),
+ (v_game.id,'t05','t08'),
+ (v_game.id,'t06','t07'),
+ (v_game.id,'t06','t10'),
+ (v_game.id,'t06','t11'),
+ (v_game.id,'t06','t12'),
+ (v_game.id,'t06','t16'),
+ (v_game.id,'t07','t08'),
+ (v_game.id,'t07','t13'),
+ (v_game.id,'t07','t16'),
+ (v_game.id,'t08','t09'),
+ (v_game.id,'t08','t13'),
+ (v_game.id,'t08','t14'),
+ (v_game.id,'t08','t15'),
+ (v_game.id,'t09','t15'),
+ (v_game.id,'t10','t11'),
+ (v_game.id,'t10','t17'),
+ (v_game.id,'t11','t12'),
+ (v_game.id,'t11','t17'),
+ (v_game.id,'t11','t19'),
+ (v_game.id,'t12','t13'),
+ (v_game.id,'t12','t16'),
+ (v_game.id,'t12','t19'),
+ (v_game.id,'t13','t14'),
+ (v_game.id,'t13','t16'),
+ (v_game.id,'t13','t19'),
+ (v_game.id,'t13','t20'),
+ (v_game.id,'t14','t15'),
+ (v_game.id,'t14','t21'),
+ (v_game.id,'t15','t22'),
+ (v_game.id,'t15','t23'),
+ (v_game.id,'t17','t18'),
+ (v_game.id,'t17','t19'),
+ (v_game.id,'t18','t19'),
+ (v_game.id,'t18','t29'),
+ (v_game.id,'t19','t20'),
+ (v_game.id,'t19','t29'),
+ (v_game.id,'t20','t21'),
+ (v_game.id,'t20','t24'),
+ (v_game.id,'t20','t27'),
+ (v_game.id,'t21','t22'),
+ (v_game.id,'t21','t24'),
+ (v_game.id,'t22','t23'),
+ (v_game.id,'t22','t24'),
+ (v_game.id,'t23','t25'),
+ (v_game.id,'t24','t25'),
+ (v_game.id,'t24','t26'),
+ (v_game.id,'t24','t27'),
+ (v_game.id,'t25','t26'),
+ (v_game.id,'t26','t27'),
+ (v_game.id,'t27','t28'),
+ (v_game.id,'t28','t29'),
+ (v_game.id,'t28','t30'),
+ (v_game.id,'t29','t30');
+ return jsonb_build_object('game_id',v_game.id,'room_id',p_room_id,'status',v_game.status,'territories',30);
+end; $$;
+
+create or replace function public.start_conquest_game(p_room_id uuid)
+returns jsonb language plpgsql security definer set search_path=public,auth as $$
+declare r public.rooms; g public.conquest_games; p record; v_count integer:=0; v_capitals text[]:=array['t02','t05','t10','t13','t18','t26']; v_colors text[]:=array['#8b5cf6','#f97316','#06b6d4','#ef4444','#22c55e','#eab308']; v_first uuid;
+begin
+ select * into r from public.rooms where id=p_room_id for update; select * into g from public.conquest_games where room_id=p_room_id for update;
+ if not found then raise exception 'Сначала создай карту игры.'; end if;
+ if r.host_id<>auth.uid() then raise exception 'Начать игру может только ведущий.'; end if;
+ if g.status<>'lobby' then raise exception 'Игра уже запущена.'; end if;
+ update public.conquest_map_territories set owner_player_id=null,is_capital=false,investment_defense=0 where game_id=g.id;
+ for p in select rp.* from public.room_players rp where rp.room_id=p_room_id order by rp.joined_at loop
+   v_count:=v_count+1; if v_count>6 then raise exception 'В «Завоевателях» максимум 6 игроков.'; end if;
+   insert into public.conquest_game_players(game_id,room_player_id,color,gold) values(g.id,p.id,v_colors[v_count],0) on conflict (game_id,room_player_id) do update set color=excluded.color,is_eliminated=false,eliminated_at=null,disconnected_at=null,reconnect_deadline=null,surrendered_at=null,final_rank=null,gold=0,citadel_bonus_battles_remaining=0,academy_battles_since_use=0;
+   update public.conquest_map_territories set owner_player_id=p.id,is_capital=true where game_id=g.id and territory_key=v_capitals[v_count];
+   if v_first is null then v_first:=p.id; end if;
+ end loop;
+ if v_count<2 then raise exception 'Нужно минимум 2 игрока.'; end if;
+ update public.conquest_games set status='playing',current_player_id=v_first,turn_number=1,updated_at=now() where id=g.id;
+ update public.rooms set status='playing' where id=p_room_id;
+ insert into public.conquest_action_log(game_id,player_id,action_type,payload) values(g.id,v_first,'game_started',jsonb_build_object('players',v_count,'map_territories',30));
+ return jsonb_build_object('status','playing','players',v_count);
+end; $$;
+
+revoke all on function public.init_conquest_game(uuid) from public,anon;
+revoke all on function public.start_conquest_game(uuid) from public,anon;
+grant execute on function public.init_conquest_game(uuid) to authenticated;
+grant execute on function public.start_conquest_game(uuid) to authenticated;
+
+commit;
